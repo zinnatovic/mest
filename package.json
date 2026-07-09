@@ -1,7 +1,4 @@
 {
   "name": "mest",
-  "version": "1.0.0",
-  "dependencies": {
-    "swisseph": "^2.10.3"
-  }
+  "version": "1.0.0"
 }
