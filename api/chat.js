@@ -3,28 +3,26 @@ module.exports = async function handler(req, res) {
 
   const { messages, systemPrompt } = req.body;
 
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents
-      })
-    }
-  );
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ]
+    })
+  });
 
   const data = await response.json();
   if (data.error) {
-    res.json({ reply: 'Gemini hata: ' + data.error.message });
+    res.json({ reply: 'Hata: ' + data.error.message });
     return;
   }
-  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Yanıt boş: ' + JSON.stringify(data).slice(0, 200);
+  const reply = data.choices?.[0]?.message?.content || 'Yanıt alınamadı.';
   res.json({ reply });
 }
