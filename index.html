@@ -1,0 +1,1413 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>AI Chat</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:#f0f4ff;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+    .phone{width:390px;height:844px;border-radius:50px;box-shadow:0 40px 120px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);overflow:hidden;position:relative;}
+    .screen{position:absolute;inset:0;display:none;flex-direction:column;}
+    .screen.active{display:flex;}
+
+    /* ══════════════════════════════════════
+       DARK ONBOARDING — shared
+    ══════════════════════════════════════ */
+    .dk{background:#0c0c18;color:#fff;}
+
+    /* Glow */
+    .glow{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:380px;height:380px;border-radius:50%;filter:blur(80px);opacity:0;pointer-events:none;z-index:0;transition:opacity 1s ease;}
+    .glow.in{opacity:.5;animation:breathe 2.4s ease-in-out infinite;}
+    @keyframes breathe{0%,100%{opacity:.42}50%{opacity:.58}}
+    .glow-green{background:radial-gradient(circle,#2ecc71,transparent 70%);}
+    .glow-blue {background:radial-gradient(circle,#3b8beb,transparent 70%);}
+    .glow-purple{background:radial-gradient(circle,#a855f7,transparent 70%);}
+    .glow-rose {background:radial-gradient(circle,#f43f5e,transparent 70%);}
+    .glow-amber{background:radial-gradient(circle,#f59e0b,transparent 70%);}
+
+    .dk-inner{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;}
+
+    /* Status bar */
+    .sb-dk{display:flex;justify-content:space-between;align-items:center;padding:14px 28px 0;font-size:15px;font-weight:600;color:rgba(255,255,255,.7);flex-shrink:0;}
+    .sb-lt{display:flex;justify-content:space-between;align-items:center;padding:14px 28px 0;font-size:15px;font-weight:600;color:#111;flex-shrink:0;}
+    .sb-icons{display:flex;gap:5px;align-items:center;}
+
+    /* Back + progress */
+    .ob-nav{display:flex;justify-content:space-between;align-items:center;padding:12px 28px 0;flex-shrink:0;}
+    .bk{background:none;border:none;cursor:pointer;padding:4px;display:flex;}
+    .prog-bar{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin:0 16px;overflow:hidden;}
+    .prog-fill{height:100%;border-radius:2px;background:rgba(255,255,255,.5);transition:width .5s ease;}
+    .step-lbl{font-size:13px;color:rgba(255,255,255,.3);font-weight:500;white-space:nowrap;}
+
+    /* Text reveal area */
+    .text-area{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:0 32px 20px;}
+    .chunk{font-size:27px;font-weight:700;line-height:1.38;letter-spacing:-.3px;margin-bottom:4px;
+      opacity:0;transform:translateY(10px);
+      transition:opacity .65s cubic-bezier(.22,.61,.36,1), transform .65s cubic-bezier(.22,.61,.36,1);}
+    .chunk.dim{color:rgba(255,255,255,.3);}
+    .chunk.bright{color:#fff;}
+    .chunk.show{opacity:1;transform:translateY(0);}
+
+    /* Input zone */
+    .inp-zone{padding:0 28px;opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;flex-shrink:0;}
+    .inp-zone.show{opacity:1;transform:translateY(0);}
+    .dk-lbl{font-size:11px;color:rgba(255,255,255,.35);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;display:block;}
+    .dk-inp{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:16px;padding:15px 18px;font-size:16px;color:#fff;outline:none;font-family:inherit;-webkit-appearance:none;transition:border-color .2s,background .2s;}
+    .dk-inp::placeholder{color:rgba(255,255,255,.22);}
+    .dk-inp:focus{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1);}
+
+    /* Social buttons */
+    .social-btn{width:100%;padding:14px 18px;border-radius:14px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;font-family:inherit;transition:background .15s,border-color .15s;}
+    .social-btn:active{background:rgba(255,255,255,.11);}
+    .or-divider{display:flex;align-items:center;gap:12px;margin:16px 0;}
+    .or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1);}
+    .or-divider span{font-size:12px;color:rgba(255,255,255,.3);font-weight:500;}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+
+    /* City suggest */
+    .dk-sug-list{background:#1a1a2e;border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden;margin-top:8px;display:none;}
+    .dk-sug-list.show{display:block;}
+    .dk-sug{padding:12px 18px;font-size:14px;color:rgba(255,255,255,.75);cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);}
+    .dk-sug:last-child{border-bottom:none;}
+    .dk-sug:active{background:rgba(255,255,255,.07);}
+
+    /* Bottom CTA */
+    .ob-bot{padding:20px 28px 40px;flex-shrink:0;}
+    .ob-btn{width:100%;padding:16px;border-radius:50px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:transform .12s,opacity .2s,background .4s,color .4s;}
+    .ob-btn:active{transform:scale(.97);}
+    .ob-btn.off{background:rgba(255,255,255,.08);color:rgba(255,255,255,.3);pointer-events:none;}
+    .ob-btn.on {background:#fff;color:#111;}
+    .skip-lnk{display:block;text-align:center;margin-top:12px;background:none;border:none;color:rgba(255,255,255,.28);font-size:13px;cursor:pointer;font-family:inherit;transition:color .2s;}
+    .skip-lnk:hover{color:rgba(255,255,255,.5);}
+
+    /* ══ WHEEL TIME PICKER ══ */
+    .wheel-wrap{display:flex;align-items:center;justify-content:center;gap:0;position:relative;height:200px;user-select:none;}
+    .wheel-col{width:100px;height:200px;overflow:hidden;position:relative;cursor:grab;}
+    .wheel-col:active{cursor:grabbing;}
+    .wheel-inner{transition:transform .15s ease-out;}
+    .wheel-item{height:50px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:600;color:rgba(255,255,255,.22);transition:color .15s,font-size .15s;}
+    .wheel-item.selected{color:#fff;font-size:30px;}
+    .wheel-sep{font-size:28px;font-weight:700;color:rgba(255,255,255,.4);padding:0 4px;align-self:center;}
+    /* highlight bar */
+    .wheel-wrap::before,.wheel-wrap::after{content:'';position:absolute;left:20px;right:20px;height:1px;background:rgba(255,255,255,.12);pointer-events:none;}
+    .wheel-wrap::before{top:75px;}
+    .wheel-wrap::after{bottom:75px;}
+    /* fade edges */
+    .wheel-col::before,.wheel-col::after{content:'';position:absolute;left:0;right:0;height:70px;z-index:2;pointer-events:none;}
+    .wheel-col::before{top:0;background:linear-gradient(to bottom,#0c0c18 0%,transparent 100%);}
+    .wheel-col::after {bottom:0;background:linear-gradient(to top,#0c0c18 0%,transparent 100%);}
+
+    /* ══ OTP ══ */
+    .otp-row{display:flex;gap:10px;justify-content:center;}
+    .otp-box{width:50px;height:58px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:14px;font-size:24px;font-weight:700;color:#fff;text-align:center;outline:none;caret-color:rgba(255,255,255,.6);font-family:inherit;transition:border-color .2s,background .2s;-webkit-appearance:none;}
+    .otp-box:focus{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.11);}
+    .otp-box.filled{border-color:rgba(255,255,255,.25);}
+
+    /* ══════════════════════════════════════
+       BLUE GRADIENT — landing + chat header
+    ══════════════════════════════════════ */
+    .grad{background:linear-gradient(170deg,#fff 0%,#fff 44%,#d6ecff 59%,#7ec8ff 76%,#38aef5 89%,#1a96f0 100%);}
+    .top{flex:1;display:flex;flex-direction:column;padding:20px 32px 0;overflow:hidden;}
+    .bot{padding:24px 28px 40px;flex-shrink:0;}
+    .icon-box{width:50px;height:50px;background:rgba(255,255,255,.9);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,80,200,.12);margin-bottom:14px;}
+    .icon-box svg{width:24px;height:24px;color:#2b7ef5;}
+    .headline{font-size:28px;font-weight:700;line-height:1.2;color:#fff;letter-spacing:-.4px;margin-bottom:8px;}
+    .subtext{font-size:14px;color:rgba(255,255,255,.72);line-height:1.5;margin-bottom:24px;}
+    .btn{width:100%;padding:16px;border-radius:50px;border:none;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .12s;margin-bottom:12px;}
+    .btn:active{transform:scale(.97);}
+    .btn:last-child{margin-bottom:0;}
+    .btn-white{background:#fff;color:#111;}
+    .btn-outline{background:rgba(255,255,255,.16);color:#fff;border:1.5px solid rgba(255,255,255,.3);}
+    .back-lt{background:none;border:none;cursor:pointer;padding:2px 0 20px;text-align:left;flex-shrink:0;}
+    .inp-lt{width:100%;background:#f5f7fa;border:1.5px solid #e8eaf0;border-radius:14px;padding:14px 16px;font-size:15px;color:#111;outline:none;font-family:inherit;-webkit-appearance:none;transition:border-color .15s;margin-bottom:14px;}
+    .inp-lt::placeholder{color:#bbb;}
+    .inp-lt:focus{border-color:#38aef5;background:#fff;}
+    .lbl-lt{font-size:13px;color:#888;font-weight:500;margin-bottom:6px;display:block;}
+    .step-title{font-size:26px;font-weight:700;color:#111;letter-spacing:-.4px;margin-bottom:5px;}
+    .step-sub{font-size:14px;color:#999;margin-bottom:24px;}
+    .summary{background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.8);border-radius:16px;padding:14px 16px;margin-bottom:18px;backdrop-filter:blur(8px);}
+    .sum-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:14px;}
+    .sum-row:last-child{border-bottom:none;}
+    .sum-key{color:#999;} .sum-val{color:#111;font-weight:600;}
+    .flink{font-size:13px;text-align:center;margin-top:12px;color:rgba(255,255,255,.6);}
+    .flink button{background:none;border:none;color:#fff;font-weight:600;cursor:pointer;font-size:13px;}
+    .err-msg{background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25);border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px;display:none;}
+    .err-msg.show{display:block;}
+    .word-scroll{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;}
+    .word{font-size:34px;font-weight:700;color:#d1d9e6;letter-spacing:-.4px;line-height:1.25;transition:color .35s,font-size .35s;}
+    .word.aw{color:#111;font-size:40px;}
+    .word .wi{display:inline-flex;align-items:center;justify-content:center;width:32px;height:22px;background:linear-gradient(135deg,#818cf8,#a855f7);border-radius:6px;margin-right:6px;vertical-align:middle;}
+    .page-dots{display:flex;gap:6px;justify-content:center;margin-bottom:18px;}
+    .pdot{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.3);transition:width .2s;}
+    .pdot.active{width:18px;background:#fff;}
+
+    /* ══ APP SHELL ══ */
+    .app-shell{background:#f7f9fc;flex-direction:column;}
+    .app-body{flex:1;position:relative;overflow:hidden;}
+    .apage{position:absolute;inset:0;display:none;flex-direction:column;}
+    .apage.active-page{display:flex;}
+
+    /* Top nav — scrollable large text */
+    .top-nav{position:absolute;top:0;left:0;right:0;z-index:50;padding:48px 0 0;pointer-events:none;}
+    .top-nav-inner{display:flex;align-items:baseline;overflow-x:auto;overflow-y:hidden;pointer-events:all;padding:0 20px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .top-nav-inner::-webkit-scrollbar{display:none;}
+    .tnav{flex-shrink:0;border:none;background:transparent;padding:0 20px 0 0;font-size:24px;font-weight:800;color:rgba(0,0,0,.2);cursor:pointer;transition:color .2s,font-size .2s;font-family:inherit;white-space:nowrap;letter-spacing:-.4px;line-height:1.2;}
+    .tnav:first-child{padding-left:0;}
+    .tnav.active{color:#111;font-size:26px;}
+
+    /* ── Senin için / Chat page ── */
+    .senin-page{background:#fff;}
+    .chat-main{flex:1;overflow-y:auto;padding:100px 16px 12px;display:flex;flex-direction:column;}
+    .chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+    .chat-star{font-size:52px;margin-bottom:18px;background:linear-gradient(135deg,#a78bfa,#38aef5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .chat-empty-title{font-size:22px;font-weight:700;color:#111;margin-bottom:8px;}
+    .chat-empty-sub{font-size:14px;color:#888;line-height:1.5;max-width:240px;}
+    .msgs-area{display:flex;flex-direction:column;gap:10px;padding-bottom:8px;}
+
+    /* Bottom input bar */
+    .chat-bottom{padding:8px 16px 28px;flex-shrink:0;}
+    .chat-pill{display:flex;align-items:flex-end;gap:8px;background:#fff;border-radius:28px;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:8px 8px 8px 14px;transition:box-shadow .2s;}
+    .chat-pill:focus-within{box-shadow:0 6px 32px rgba(43,126,245,.18);}
+    .pill-left-btn{background:none;border:none;cursor:pointer;padding:6px;color:#666;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s;border-radius:50%;}
+    .pill-left-btn:hover{background:#f5f5f5;}
+    .pill-input{flex:1;background:transparent;border:none;outline:none;font-size:16px;color:#111;resize:none;max-height:120px;line-height:1.5;padding:5px 0;font-family:inherit;}
+    .pill-input::placeholder{color:#bbb;}
+    .pill-send-btn{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#38aef5,#1a96f0);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;transition:transform .12s,opacity .2s;}
+    .pill-send-btn:active{transform:scale(.88);}
+    .pill-send-btn.dim{opacity:.35;pointer-events:none;}
+
+    /* History panel */
+    .hist-panel{position:absolute;left:-100%;top:0;bottom:0;width:82%;background:#fff;z-index:100;transition:left .28s cubic-bezier(.22,.61,.36,1);padding:90px 16px 24px;overflow-y:auto;box-shadow:4px 0 24px rgba(0,0,0,.12);}
+    .hist-panel.open{left:0;}
+    .hist-overlay{position:absolute;inset:0;background:rgba(0,0,0,.28);z-index:99;display:none;backdrop-filter:blur(2px);}
+    .hist-overlay.show{display:block;}
+
+    /* Section header */
+    .section-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 16px 8px;}
+    .section-hdr span{font-size:13px;font-weight:700;color:#999;letter-spacing:.4px;text-transform:uppercase;}
+    .see-all{background:none;border:none;font-size:13px;font-weight:600;color:#2b7ef5;cursor:pointer;font-family:inherit;}
+
+    /* Calendar extras */
+    .cal-nav-btn{background:#f5f7fa;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+    .day-insight-card{margin-top:16px;background:linear-gradient(135deg,#f0f9ff,#dbeafe);border-radius:16px;padding:16px;border:1px solid #bae6fd;}
+
+    /* Pro card */
+    .pro-card{background:linear-gradient(135deg,#7c3aed,#4f46e5);border-radius:18px;padding:20px;cursor:pointer;}
+
+    /* Calendar */
+    .cal-day-lbl{text-align:center;font-size:11px;font-weight:600;color:#bbb;padding:4px 0;}
+    .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:14px;font-weight:500;color:#333;cursor:pointer;position:relative;transition:background .15s;}
+    .cal-day:hover{background:#f0f4ff;}
+    .cal-day.today{background:linear-gradient(135deg,#38aef5,#1a96f0);color:#fff;font-weight:700;}
+    .cal-day.has-event::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#f43f5e;}
+    .cal-day.today.has-event::after{background:#fff;}
+    .cal-day.other-month{color:#ddd;}
+    .event-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-radius:14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+    .event-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .event-title{font-size:14px;font-weight:600;color:#111;}
+    .event-date{font-size:12px;color:#aaa;margin-top:1px;}
+
+    /* History */
+    .hist-item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:#fff;border-radius:16px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+    .hist-item:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);}
+    .hist-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+    .hist-title{font-size:14px;font-weight:600;color:#111;margin-bottom:3px;}
+    .hist-preview{font-size:13px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+    .hist-time{font-size:11px;color:#ccc;margin-top:2px;}
+
+    /* Profile */
+    .prof-card{background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+    .prof-card-title{font-size:11px;font-weight:700;color:#bbb;letter-spacing:.8px;text-transform:uppercase;padding:14px 16px 8px;}
+    .prof-row{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid #f5f5f5;}
+    .prof-row.last{border-bottom:none;}
+    .prof-key{font-size:14px;color:#555;display:flex;align-items:center;gap:8px;}
+    .prof-val{font-size:14px;font-weight:600;color:#111;}
+    .prof-icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:#888;flex-shrink:0;}
+    .prof-icon svg{width:16px;height:16px;}
+
+    /* Toggle */
+    .toggle{position:relative;display:inline-block;width:42px;height:24px;}
+    .toggle input{opacity:0;width:0;height:0;}
+    .tslider{position:absolute;cursor:pointer;inset:0;background:#ddd;border-radius:24px;transition:.2s;}
+    .tslider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;}
+    .toggle input:checked+.tslider{background:#2b7ef5;}
+    .toggle input:checked+.tslider:before{transform:translateX(18px);}
+
+    /* Planet table */
+    .planet-row{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid #f0f0f0;}
+    .planet-row:last-child{border-bottom:none;}
+    .planet-symbol{width:40px;height:40px;border-radius:12px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;font-style:normal;}
+    .planet-info{flex:1;min-width:0;}
+    .planet-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+    .planet-name{font-size:15px;font-weight:600;color:#111;}
+    .planet-sign{font-size:14px;font-weight:700;}
+    .planet-desc{font-size:12px;color:#999;line-height:1.4;}
+
+    /* ══ CHAT (unchanged) ══ */
+    .chat-hdr{background:#fff;padding:54px 20px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eef0f4;flex-shrink:0;}
+    .cavatar{width:36px;height:36px;background:linear-gradient(135deg,#38aef5,#1a96f0);border-radius:10px;display:flex;align-items:center;justify-content:center;}
+    .cavatar svg{width:18px;height:18px;color:#fff;}
+    .cname{font-size:16px;font-weight:700;color:#111;}
+    .csub{font-size:12px;color:#4caf50;font-weight:500;}
+    .ppill{background:#f0f4ff;border:1.5px solid #e0e8ff;border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:5px;}
+    .ppill select{background:transparent;border:none;font-size:13px;font-weight:600;color:#2b7ef5;outline:none;cursor:pointer;}
+    .msgs{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:10px;}
+    .empty-c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#ccc;}
+    .empty-c svg{width:40px;height:40px;} .empty-c p{font-size:14px;}
+    .brow{display:flex;} .brow.user{justify-content:flex-end;} .brow.assistant{justify-content:flex-start;}
+    .bub{max-width:72%;padding:12px 16px;border-radius:20px;font-size:15px;line-height:1.45;white-space:pre-wrap;animation:pop .18s ease-out;}
+    @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+    .bub.user{background:linear-gradient(135deg,#38aef5,#1a96f0);color:#fff;border-bottom-right-radius:5px;}
+    .bub.assistant{background:#fff;color:#111;border-bottom-left-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+    .tdots span{display:inline-block;width:6px;height:6px;background:#aaa;border-radius:50%;margin:0 2px;animation:bl 1.2s infinite;}
+    .tdots span:nth-child(2){animation-delay:.2s} .tdots span:nth-child(3){animation-delay:.4s}
+    @keyframes bl{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+    .cinput-area{background:#fff;border-top:1px solid #eef0f4;padding:12px 16px 32px;flex-shrink:0;}
+    .irow{display:flex;align-items:flex-end;gap:10px;background:#f5f7fa;border:1.5px solid #e8eaf0;border-radius:24px;padding:10px 10px 10px 18px;transition:border-color .15s;}
+    .irow:focus-within{border-color:#38aef5;background:#fff;}
+    .irow textarea{flex:1;background:transparent;border:none;outline:none;font-size:15px;color:#111;resize:none;max-height:120px;line-height:1.45;padding:2px 0;font-family:inherit;}
+    .irow textarea::placeholder{color:#bbb;}
+    .sbtn{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#38aef5,#1a96f0);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .12s,transform .12s;}
+    .sbtn:active{transform:scale(.9);}
+    .sbtn svg{width:16px;height:16px;color:#fff;}
+    .lout{background:none;border:none;cursor:pointer;font-size:13px;color:#bbb;font-weight:500;padding:4px 8px;}
+
+    @media(max-width:430px){body{background:#0c0c18;align-items:flex-start;}.phone{width:100vw;height:100dvh;border-radius:0;box-shadow:none;}}
+  </style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ══ LANDING ══ -->
+  <div id="screen-land" class="screen grad active">
+    <div class="sb-lt"><span>9:41</span>
+      <div class="sb-icons">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#111"><rect x="2" y="8" width="3" height="13" rx="1"/><rect x="7" y="5" width="3" height="16" rx="1"/><rect x="12" y="2" width="3" height="19" rx="1"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+        <svg width="20" height="12" viewBox="0 0 24 12" fill="#111"><rect x="0" y="1" width="20" height="10" rx="2" opacity=".2"/><rect x="0" y="1" width="14" height="10" rx="2"/></svg>
+      </div>
+    </div>
+    <div class="top">
+      <div class="word-scroll">
+        <div class="word" id="w0">Hisset</div>
+        <div class="word aw" id="w1"><span class="wi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span>Keşfet</div>
+        <div class="word" id="w2">Mest ol</div>
+      </div>
+    </div>
+    <div class="bot">
+      <div class="page-dots"><div class="pdot active"></div><div class="pdot"></div><div class="pdot"></div></div>
+      <div class="icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+      <div class="headline">Gökyüzü<br>seni tanıyor.</div>
+      <div class="subtext">Doğum haritana dayanan kişisel astroloji rehberin.</div>
+      <button class="btn btn-white" onclick="goOb(1)">Başla</button>
+      <button class="btn btn-outline" onclick="mockQuickLogin()">Giriş Yap</button>
+    </div>
+  </div>
+
+  <!-- ══ OB1: DOĞUM TARİHİ ══ -->
+  <div id="screen-ob1" class="screen dk">
+    <div class="glow glow-green" id="g1"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goScreen('land')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div class="prog-bar"><div class="prog-fill" style="width:20%"></div></div>
+        <span class="step-lbl">1 / 5</span>
+      </div>
+      <div class="text-area" id="t1"></div>
+      <div class="inp-zone" id="i1">
+        <label class="dk-lbl">Adın</label>
+        <input id="ob-name" class="dk-inp" type="text" placeholder="Adın" oninput="enableBtn('b1')" autocomplete="given-name" />
+        <label class="dk-lbl" style="margin-top:16px;">Doğum tarihin</label>
+        <input id="ob-date" class="dk-inp" type="date" oninput="enableBtn('b1')" />
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn off" id="b1" onclick="saveDate()">İleri</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OB2: DOĞUM SAATİ ══ -->
+  <div id="screen-ob2" class="screen dk">
+    <div class="glow glow-blue" id="g2"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goOb(1)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div class="prog-bar"><div class="prog-fill" style="width:40%"></div></div>
+        <span class="step-lbl">2 / 5</span>
+      </div>
+      <div class="text-area" id="t2"></div>
+      <div class="inp-zone" id="i2">
+        <!-- Wheel picker -->
+        <div class="wheel-wrap" id="time-wheel">
+          <div class="wheel-col" id="wh-hour"></div>
+          <span class="wheel-sep">:</span>
+          <div class="wheel-col" id="wh-min"></div>
+        </div>
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn on" id="b2" onclick="saveTime()">İleri</button>
+        <button class="skip-lnk" onclick="skipTime()">Bilmiyorum, atla →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OB3: DOĞUM YERİ ══ -->
+  <div id="screen-ob3" class="screen dk">
+    <div class="glow glow-purple" id="g3"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goOb(2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div class="prog-bar"><div class="prog-fill" style="width:60%"></div></div>
+        <span class="step-lbl">3 / 5</span>
+      </div>
+      <div class="text-area" id="t3"></div>
+      <div class="inp-zone" id="i3">
+        <label class="dk-lbl">Şehir ara</label>
+        <input id="ob-place" class="dk-inp" type="text" placeholder="İstanbul, Türkiye" oninput="filterCities(this.value)" autocomplete="off" />
+        <div class="dk-sug-list" id="city-list"></div>
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn off" id="b3" onclick="savePlace()">İleri</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OB4: E-POSTA ══ -->
+  <div id="screen-ob4" class="screen dk">
+    <div class="glow glow-rose" id="g4"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goOb(3)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div class="prog-bar"><div class="prog-fill" style="width:80%"></div></div>
+        <span class="step-lbl">4 / 5</span>
+      </div>
+      <div class="text-area" id="t4"></div>
+      <div class="inp-zone" id="i4">
+        <!-- Social buttons -->
+        <button class="social-btn" onclick="mockSocialLogin('Google')">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google ile devam et
+        </button>
+        <button class="social-btn" onclick="mockSocialLogin('Apple')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          Apple ile devam et
+        </button>
+        <div class="or-divider"><span>veya</span></div>
+        <label class="dk-lbl">E-posta adresin</label>
+        <input id="ob-email" class="dk-inp" type="email" placeholder="sen@email.com" oninput="enableBtn('b4')" />
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn off" id="b4" onclick="saveEmail()">İleri</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OB5: ŞİFRE ══ -->
+  <div id="screen-ob5" class="screen dk">
+    <div class="glow glow-amber" id="g5"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goOb(4)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div class="prog-bar"><div class="prog-fill" style="width:100%"></div></div>
+        <span class="step-lbl">5 / 5</span>
+      </div>
+      <div class="text-area" id="t5"></div>
+      <div class="inp-zone" id="i5">
+        <label class="dk-lbl">Şifren</label>
+        <input id="ob-pass" class="dk-inp" type="password" placeholder="En az 6 karakter" oninput="enableBtn('b5')" />
+        <div class="err-msg" id="reg-err" style="margin-top:10px;"></div>
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn off" id="b5" onclick="register()">Hesabımı Oluştur</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OTP ══ -->
+  <div id="screen-otp" class="screen dk">
+    <div class="glow glow-rose"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goOb(4)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div class="prog-bar"><div class="prog-fill" style="width:90%"></div></div>
+        <span class="step-lbl">Doğrulama</span>
+      </div>
+      <div class="text-area" id="t-otp"></div>
+      <div class="inp-zone" id="i-otp">
+        <div class="otp-row" id="otp-row">
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(this,0)" onkeydown="otpKey(this,0,event)" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(this,1)" onkeydown="otpKey(this,1,event)" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(this,2)" onkeydown="otpKey(this,2,event)" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(this,3)" onkeydown="otpKey(this,3,event)" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(this,4)" onkeydown="otpKey(this,4,event)" />
+          <input class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" oninput="otpInput(this,5)" onkeydown="otpKey(this,5,event)" />
+        </div>
+        <p style="text-align:center;margin-top:16px;font-size:13px;color:rgba(255,255,255,.3);">
+          Kodu almadın mı? <button onclick="" style="background:none;border:none;color:rgba(255,255,255,.55);font-size:13px;cursor:pointer;font-family:inherit;">Tekrar gönder</button>
+        </p>
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn off" id="b-otp" onclick="verifyOtp()">Doğrula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ GİRİŞ ══ -->
+  <div id="screen-login" class="screen dk">
+    <div class="glow glow-blue"></div>
+    <div class="dk-inner">
+      <div class="sb-dk"><span>9:41</span></div>
+      <div class="ob-nav">
+        <button class="bk" onclick="goScreen('land')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.5"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg></button>
+        <div style="flex:1"></div>
+      </div>
+      <div class="text-area" id="t-login"></div>
+      <div class="inp-zone show" id="i-login" style="padding:0 28px;">
+        <div class="err-msg" id="login-err"></div>
+        <label class="dk-lbl">E-posta</label>
+        <input id="l-email" class="dk-inp" type="email" placeholder="ornek@email.com" style="margin-bottom:12px;" />
+        <label class="dk-lbl">Şifre</label>
+        <input id="l-pass" class="dk-inp" type="password" placeholder="Şifren" />
+        <div style="text-align:right;margin-top:10px;">
+          <button style="background:none;border:none;font-size:13px;color:rgba(255,255,255,.4);cursor:pointer;font-family:inherit;">Şifremi unuttum</button>
+        </div>
+      </div>
+      <div class="ob-bot">
+        <button class="ob-btn on" onclick="login()">Giriş Yap</button>
+        <div class="flink" style="margin-top:14px;">Hesabın yok mu? <button onclick="goOb(1)">Kayıt ol</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ APP SHELL ══ -->
+  <div id="screen-chat" class="screen app-shell">
+
+    <!-- TOP NAV -->
+    <div class="top-nav" id="top-nav">
+      <div class="top-nav-inner">
+        <button class="tnav active" id="tnav-senin" onclick="switchTab('senin')">Senin için</button>
+        <button class="tnav" id="tnav-harita"  onclick="switchTab('harita')">Harita</button>
+        <button class="tnav" id="tnav-takvim"  onclick="switchTab('takvim')">Takvim</button>
+        <button class="tnav" id="tnav-profil"  onclick="switchTab('profil')">Profil</button>
+      </div>
+    </div>
+
+    <!-- PAGES -->
+    <div class="app-body">
+
+      <!-- ── SENİN İÇİN ── -->
+      <div id="page-senin" class="apage active-page senin-page">
+        <!-- History slide panel -->
+        <div id="hist-panel" class="hist-panel">
+          <div style="font-size:16px;font-weight:700;color:#111;margin-bottom:16px;padding-top:4px;">Geçmiş Sohbetler</div>
+          <div id="history-list"></div>
+        </div>
+        <div id="hist-overlay" class="hist-overlay" onclick="closeHistory()"></div>
+
+        <!-- Chat messages area -->
+        <div class="chat-main" id="chat-main">
+          <!-- Empty state -->
+          <div id="chat-empty" class="chat-empty">
+            <div class="chat-star">✦</div>
+            <div class="chat-empty-title" id="hero-greeting">Nereden başlayalım?</div>
+            <div class="chat-empty-sub" id="hero-insight">Gökyüzü seni tanıyor. Sormak istediğin ne?</div>
+          </div>
+          <!-- Messages -->
+          <div id="msgs" class="msgs-area"></div>
+        </div>
+
+        <!-- Bottom input bar -->
+        <div class="chat-bottom">
+          <form onsubmit="send(event)" id="chat-form">
+            <div class="chat-pill" id="chat-pill">
+              <button type="button" id="hist-btn" class="pill-left-btn" onclick="openHistory()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
+              <textarea id="cinput" class="pill-input" rows="1" placeholder="Soru sor..."
+                onkeydown="onkey(event)" oninput="pillInput(this)"
+                onfocus="pillFocus(true)" onblur="pillFocus(false)"></textarea>
+              <button type="submit" class="pill-send-btn dim" id="pill-send">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+            <input type="hidden" id="prov" value="claude" />
+          </form>
+        </div>
+      </div>
+
+      <!-- ── HARİTA ── -->
+      <div id="page-harita" class="apage" style="background:#fff;overflow-y:auto;">
+        <div style="padding:80px 16px 0;">
+          <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:2px;">Doğum Haritam</div>
+          <div style="font-size:13px;color:#aaa;margin-bottom:20px;" id="chart-sub">Natal Chart</div>
+          <div id="planet-table"></div>
+          <div style="height:24px;"></div>
+        </div>
+      </div>
+
+      <!-- ── TAKVİM ── -->
+      <div id="page-takvim" class="apage" style="background:#fff;overflow-y:auto;">
+        <div style="padding:60px 16px 0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div>
+              <div style="font-size:22px;font-weight:700;color:#111;">Takvim</div>
+              <div style="font-size:13px;color:#aaa;" id="cal-month-lbl">Temmuz 2026</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button onclick="changeMonth(-1)" class="cal-nav-btn">‹</button>
+              <button onclick="changeMonth(1)"  class="cal-nav-btn">›</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px;">
+            <div class="cal-day-lbl">Pzt</div><div class="cal-day-lbl">Sal</div><div class="cal-day-lbl">Çar</div>
+            <div class="cal-day-lbl">Per</div><div class="cal-day-lbl">Cum</div>
+            <div class="cal-day-lbl" style="color:#f43f5e;">Cmt</div><div class="cal-day-lbl" style="color:#f43f5e;">Paz</div>
+          </div>
+          <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+
+          <!-- Selected day insight -->
+          <div id="day-insight" class="day-insight-card" style="display:none;"></div>
+
+          <!-- Month events -->
+          <div style="margin-top:20px;">
+            <div class="section-hdr" style="padding:0;margin-bottom:10px;"><span>Bu Ay</span></div>
+            <div id="events-list"></div>
+          </div>
+          <div style="height:24px;"></div>
+        </div>
+      </div>
+
+      <!-- ── PROFİL ── -->
+      <div id="page-profil" class="apage" style="background:#f5f5f7;overflow-y:auto;">
+        <div style="padding:80px 16px 0;">
+
+          <!-- Avatar + name -->
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+            <div style="width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#38aef5,#a855f7);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <div style="font-size:18px;font-weight:700;color:#111;" id="prof-name">—</div>
+              <div style="font-size:13px;color:#aaa;margin-top:2px;" id="prof-email">—</div>
+            </div>
+          </div>
+
+          <!-- PRO upgrade card -->
+          <div class="pro-card">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,.65);margin-bottom:6px;">PRO</div>
+            <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;">Sınırsız sohbet & özellikler</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.4;">Derinlemeli harita analizi, özel günlük içgörüler.</div>
+            <div style="margin-top:14px;background:#fff;color:#7c3aed;border-radius:20px;padding:8px 20px;display:inline-block;font-size:13px;font-weight:700;cursor:pointer;">Pro'ya Geç</div>
+          </div>
+
+          <!-- Account info -->
+          <div class="prof-card" style="margin-top:12px;">
+            <div class="prof-card-title">Hesap Bilgileri</div>
+            <div class="prof-row">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>Doğum Tarihi</span>
+              <span class="prof-val" id="p-date">—</span>
+            </div>
+            <div class="prof-row">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>Doğum Saati</span>
+              <span class="prof-val" id="p-time">—</span>
+            </div>
+            <div class="prof-row last">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>Doğum Yeri</span>
+              <span class="prof-val" id="p-place">—</span>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <div class="prof-card" style="margin-top:12px;">
+            <div class="prof-card-title">Bildirimler</div>
+            <div class="prof-row">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>Günlük özet</span>
+              <label class="toggle"><input type="checkbox" checked /><span class="tslider"></span></label>
+            </div>
+            <div class="prof-row">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></span>Dolunay hatırlatıcı</span>
+              <label class="toggle"><input type="checkbox" checked /><span class="tslider"></span></label>
+            </div>
+            <div class="prof-row last">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></span>Gezegen geçişleri</span>
+              <label class="toggle"><input type="checkbox" /><span class="tslider"></span></label>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div class="prof-card" style="margin-top:12px;">
+            <div class="prof-card-title">Ayarlar</div>
+            <div class="prof-row last">
+              <span class="prof-key"><span class="prof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>Görünüm</span>
+              <label class="toggle"><input type="checkbox" /><span class="tslider"></span></label>
+            </div>
+          </div>
+
+          <!-- Account actions -->
+          <div class="prof-card" style="margin-top:12px;margin-bottom:4px;">
+            <div class="prof-row" style="cursor:pointer;" onclick="logout()">
+              <span class="prof-key" style="color:#ef4444;"><span class="prof-icon" style="color:#ef4444;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>Çıkış yap</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="prof-row last" style="cursor:pointer;" onclick="confirmDelete()">
+              <span class="prof-key" style="color:#f87171;"><span class="prof-icon" style="color:#f87171;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></span>Hesabı sil</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
+
+          <div style="height:32px;"></div>
+        </div>
+      </div>
+
+    </div><!-- /app-body -->
+  </div><!-- /screen-chat -->
+
+</div>
+<script>
+// ═══════════════════════════════════════════════
+//  ONBOARDING TEXT CONFIG
+// ═══════════════════════════════════════════════
+const TEXTS = {
+  1: [{t:"Sana özel bir şey hazırlamak istiyorum.",d:true},{t:"Ama bunun için o ana gitmem gerekiyor.",d:true},{t:"Dünyaya geldiğin ana.",d:false}],
+  2: [{t:"İyiyiz.",d:true},{t:"Şimdi biraz daha yaklaşalım.",d:true},{t:"O gün tam olarak saat kaçtı?",d:false}],
+  3: [{t:"Zamanı bulduk.",d:true},{t:"Bir de yere ihtiyacım var.",d:true},{t:"Bu hikaye nerede başladı?",d:false}],
+  4: [{t:"Haritanı çiziyorum.",d:true},{t:"Seninle buluşabilmem için",d:true},{t:"mail adresini alabilir miyim?",d:false}],
+  5: [{t:"Neredeyse tamam.",d:true},{t:"Hesabını korumak için",d:true},{t:"bir şifre belirle.",d:false}],
+  login:[{t:"Tekrar hoş geldin.",d:true},{t:"Seni bekliyordum.",d:true},{t:"Giriş yapmak için bilgilerini gir.",d:false}],
+  otp:[{t:"Bir adım kaldı.",d:true},{t:"Az önce bir mail attım.",d:true},{t:"Kodu buraya yazar mısın?",d:false}],
+};
+
+// ═══════════════════════════════════════════════
+//  TEXT REVEAL
+// ═══════════════════════════════════════════════
+const timers = {};
+function reveal(id, chunks, onDone) {
+  if (timers[id]) { timers[id].forEach(clearTimeout); delete timers[id]; }
+  const el = document.getElementById('t'+id);
+  if (!el) return;
+  el.innerHTML = '';
+  const spans = chunks.map(c => {
+    const s = document.createElement('div');
+    s.className = 'chunk ' + (c.d ? 'dim' : 'bright');
+    s.textContent = c.t;
+    el.appendChild(s);
+    return s;
+  });
+  const ts = [];
+  chunks.forEach((_, i) => {
+    const delay = 300 + i * 1500;
+    ts.push(setTimeout(() => {
+      spans[i].classList.add('show');
+      if (i === chunks.length - 1) {
+        ts.push(setTimeout(() => { if (onDone) onDone(); }, 500));
+      }
+    }, delay));
+  });
+  timers[id] = ts;
+}
+
+function showGlow(n) {
+  document.querySelectorAll('.glow').forEach(g => g.classList.remove('in'));
+  const g = document.getElementById('g'+n);
+  if (g) setTimeout(() => g.classList.add('in'), 100);
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function goOb(n) {
+  goScreen('ob' + n);
+  showGlow(n);
+
+  // Reset input zone
+  const iz = document.getElementById('i'+n);
+  if (iz) { iz.classList.remove('show'); }
+
+  // Run text reveal, then show input
+  if (TEXTS[n]) {
+    reveal(n, TEXTS[n], () => {
+      if (iz) iz.classList.add('show');
+      // wheel picker init
+      if (n === 2) initWheels();
+      // focus input
+      setTimeout(() => {
+        const inp = iz?.querySelector('input.dk-inp');
+        if (inp) inp.focus();
+      }, 600);
+    });
+  }
+
+  // Login text
+  if (n === 'login') {
+    reveal('login', TEXTS.login, () => {});
+  }
+}
+
+function enableBtn(btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  let ok = false;
+  if (btnId === 'b1') {
+    const name = document.getElementById('ob-name')?.value.trim();
+    const date = document.getElementById('ob-date')?.value;
+    ok = !!(name && date);
+  } else {
+    const map = {b3:'ob-place',b4:'ob-email',b5:'ob-pass'};
+    const inp = document.getElementById(map[btnId]);
+    ok = !!(inp && inp.value.trim().length > 0);
+  }
+  btn.classList.toggle('off', !ok);
+  btn.classList.toggle('on', ok);
+}
+
+// Login screen reveal on open
+document.getElementById('screen-login').addEventListener('transitionend', () => {});
+function openLogin() {
+  goScreen('login');
+  document.querySelectorAll('.glow').forEach(g => g.classList.remove('in'));
+  setTimeout(() => {
+    const g = document.querySelector('#screen-login .glow');
+    if (g) g.classList.add('in');
+  }, 100);
+  reveal('login', TEXTS.login, () => {
+    document.getElementById('i-login').classList.add('show');
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  WHEEL TIME PICKER
+// ═══════════════════════════════════════════════
+const wheelState = { hour: 12, min: 0 };
+
+function initWheels() {
+  buildWheel('wh-hour', 24, wheelState.hour, v => { wheelState.hour = v; });
+  buildWheel('wh-min',  60, wheelState.min,  v => { wheelState.min  = v; });
+}
+
+function buildWheel(id, count, initial, onChange) {
+  const col = document.getElementById(id);
+  col.innerHTML = '';
+  const inner = document.createElement('div');
+  inner.className = 'wheel-inner';
+
+  // padding items
+  for (let p = 0; p < 2; p++) {
+    const d = document.createElement('div'); d.className = 'wheel-item'; d.textContent = '';
+    inner.appendChild(d);
+  }
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = 'wheel-item' + (i === initial ? ' selected' : '');
+    d.textContent = String(i).padStart(2,'0');
+    inner.appendChild(d);
+  }
+  for (let p = 0; p < 2; p++) {
+    const d = document.createElement('div'); d.className = 'wheel-item'; d.textContent = '';
+    inner.appendChild(d);
+  }
+
+  col.appendChild(inner);
+
+  // Position
+  let current = initial;
+  inner.style.transform = `translateY(${-current * 50}px)`;
+
+  // Touch/mouse drag
+  let startY = null, startTranslate = 0;
+  const getTranslate = () => {
+    const m = inner.style.transform.match(/-?[\d.]+/);
+    return m ? parseFloat(m[0]) : 0;
+  };
+
+  function snap(translate) {
+    const idx = Math.round(-translate / 50);
+    const clamped = Math.max(0, Math.min(count - 1, idx));
+    inner.style.transition = 'transform .2s cubic-bezier(.25,.46,.45,.94)';
+    inner.style.transform = `translateY(${-clamped * 50}px)`;
+    current = clamped;
+    onChange(clamped);
+    // Update selected
+    inner.querySelectorAll('.wheel-item').forEach((el,i) => {
+      el.classList.toggle('selected', i - 2 === clamped);
+    });
+    setTimeout(() => { inner.style.transition = ''; }, 220);
+  }
+
+  col.addEventListener('mousedown', e => { startY = e.clientY; startTranslate = getTranslate(); e.preventDefault(); });
+  col.addEventListener('touchstart', e => { startY = e.touches[0].clientY; startTranslate = getTranslate(); }, {passive:true});
+
+  const move = (y) => {
+    if (startY === null) return;
+    const dy = y - startY;
+    const raw = startTranslate + dy;
+    const clamped = Math.max(-(count-1)*50, Math.min(0, raw));
+    inner.style.transform = `translateY(${clamped}px)`;
+  };
+  const end = (y) => {
+    if (startY === null) return;
+    const dy = y - startY;
+    snap(startTranslate + dy);
+    startY = null;
+  };
+
+  col.addEventListener('mousemove',  e => move(e.clientY));
+  col.addEventListener('mouseup',    e => end(e.clientY));
+  col.addEventListener('mouseleave', e => { if (startY !== null) end(e.clientY); });
+  col.addEventListener('touchmove',  e => move(e.touches[0].clientY), {passive:true});
+  col.addEventListener('touchend',   e => end(e.changedTouches[0].clientY), {passive:true});
+
+  // Wheel scroll
+  col.addEventListener('wheel', e => {
+    e.preventDefault();
+    const idx = Math.max(0, Math.min(count-1, current + (e.deltaY > 0 ? 1 : -1)));
+    snap(-idx * 50);
+  }, {passive:false});
+}
+
+// ═══════════════════════════════════════════════
+//  OTP LOGIC
+// ═══════════════════════════════════════════════
+function otpInput(el, idx) {
+  el.classList.toggle('filled', el.value.length > 0);
+  if (el.value.length === 1) {
+    const boxes = document.querySelectorAll('.otp-box');
+    if (idx < 5) boxes[idx+1].focus();
+    // Check if all filled
+    const allFilled = [...boxes].every(b => b.value.length === 1);
+    const btn = document.getElementById('b-otp');
+    if (allFilled) { btn.classList.remove('off'); btn.classList.add('on'); }
+  }
+}
+function otpKey(el, idx, e) {
+  if (e.key === 'Backspace' && el.value === '' && idx > 0) {
+    const boxes = document.querySelectorAll('.otp-box');
+    boxes[idx-1].focus(); boxes[idx-1].value = ''; boxes[idx-1].classList.remove('filled');
+    const btn = document.getElementById('b-otp');
+    btn.classList.remove('on'); btn.classList.add('off');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let profile = {}, user = null, msgs = [], busy = false;
+const db = () => JSON.parse(localStorage.getItem('users')||'{}');
+const saveDb = o => localStorage.setItem('users', JSON.stringify(o));
+
+// Onboarding steps
+function saveDate() {
+  const v = document.getElementById('ob-date').value;
+  const n = document.getElementById('ob-name')?.value.trim();
+  if (!v) return;
+  profile.date = v;
+  if (n) profile.name = n;
+  goOb(2);
+}
+function saveTime() {
+  const h = String(wheelState.hour).padStart(2,'0');
+  const m = String(wheelState.min).padStart(2,'0');
+  profile.time = h + ':' + m; goOb(3);
+}
+function skipTime() { profile.time = null; goOb(3); }
+function savePlace() {
+  const v = document.getElementById('ob-place').value.trim();
+  if (!v) return;
+  profile.place = v; goOb(4);
+}
+function saveEmail() {
+  const v = document.getElementById('ob-email').value.trim();
+  if (!v || !v.includes('@')) return;
+  profile.email = v;
+  // Go to OTP (demo: skip verification, go straight to password)
+  goOtpScreen();
+}
+
+function goOtpScreen() {
+  goScreen('otp');
+  document.querySelectorAll('.glow').forEach(g => g.classList.remove('in'));
+  setTimeout(() => { const g = document.querySelector('#screen-otp .glow'); if(g) g.classList.add('in'); }, 100);
+  const iz = document.getElementById('i-otp'); iz.classList.remove('show');
+  reveal('otp', TEXTS.otp, () => {
+    iz.classList.add('show');
+    setTimeout(() => document.querySelector('.otp-box')?.focus(), 400);
+  });
+}
+
+function verifyOtp() {
+  const boxes = document.querySelectorAll('.otp-box');
+  const code = [...boxes].map(b => b.value).join('');
+  if (code.length < 6) return;
+  if (code !== '111111') {
+    // shake + clear
+    const row = document.getElementById('otp-row');
+    row.style.animation = 'shake .35s ease';
+    setTimeout(() => { row.style.animation = ''; boxes.forEach(b => { b.value=''; b.classList.remove('filled'); }); boxes[0].focus(); document.getElementById('b-otp').classList.remove('on'); document.getElementById('b-otp').classList.add('off'); }, 350);
+    return;
+  }
+  // Doğrulama başarılı — kaydı tamamla ve chat'e gönder
+  const email = profile.email;
+  const users = db();
+  users[email] = users[email] || { profile: {...profile} };
+  saveDb(users);
+  user = { email, profile: {...profile} };
+  localStorage.setItem('session', JSON.stringify(user));
+  enterChat(true);
+}
+
+function mockQuickLogin() {
+  // Demo: direkt içeri al
+  const users = db();
+  const keys = Object.keys(users);
+  if (keys.length > 0) {
+    const email = keys[0];
+    user = { email, profile: users[email].profile || {} };
+  } else {
+    // Hiç kayıt yok → demo user oluştur
+    const email = 'demo@astro.app';
+    const p = { name: 'Demo', date: '1995-03-21', time: '08:30', place: 'İstanbul, Türkiye' };
+    users[email] = { profile: p };
+    saveDb(users);
+    user = { email, profile: p };
+  }
+  localStorage.setItem('session', JSON.stringify(user));
+  enterChat(false);
+}
+
+function mockSocialLogin(provider) {
+  profile.email = (provider === 'Google' ? 'google' : 'apple') + '_user_' + Date.now() + '@mock.com';
+  profile.provider = provider;
+  const users = db();
+  users[profile.email] = { provider, profile: {...profile} };
+  saveDb(users);
+  user = { email: profile.email, profile: {...profile} };
+  localStorage.setItem('session', JSON.stringify(user));
+  enterChat(true);
+}
+
+function register() {
+  const pass = document.getElementById('ob-pass').value;
+  const err = document.getElementById('reg-err');
+  if (pass.length < 6) { showErr(err,'Şifre en az 6 karakter.'); return; }
+  const email = profile.email;
+  if (!email) { showErr(err,'E-posta eksik.'); return; }
+  const users = db();
+  if (users[email]) { showErr(err,'Bu e-posta zaten kayıtlı.'); return; }
+  users[email] = { pass, profile: {...profile} };
+  saveDb(users);
+  user = { email, profile: {...profile} };
+  localStorage.setItem('session', JSON.stringify(user));
+  enterChat(true);
+}
+
+function login() {
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const err   = document.getElementById('login-err');
+  const u = db()[email];
+  if (!u || u.pass !== pass) { showErr(err,'E-posta veya şifre hatalı.'); return; }
+  user = { email, profile: u.profile||{} };
+  localStorage.setItem('session', JSON.stringify(user));
+  enterChat(false);
+}
+
+function logout() {
+  user=null; msgs=[]; localStorage.removeItem('session');
+  const msgsEl = document.getElementById('msgs');
+  if (msgsEl) msgsEl.innerHTML = '';
+  goScreen('land');
+}
+
+function confirmDelete() {
+  if (!confirm('Hesabını silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
+  const users = db();
+  if (user?.email) delete users[user.email];
+  saveDb(users);
+  logout();
+}
+
+function copyRef() {
+  const code = document.getElementById('ref-code')?.textContent || 'ASTRO2026';
+  navigator.clipboard?.writeText(code).catch(()=>{});
+  const confirm = document.getElementById('copy-confirm');
+  if (confirm) { confirm.textContent = '✓ Kod kopyalandı!'; setTimeout(()=>confirm.textContent='', 2000); }
+}
+
+function enterChat(isNew) {
+  goScreen('chat');
+  switchTab('senin');
+  // Reset chat empty state
+  const empty = document.getElementById('chat-empty');
+  if (empty) empty.style.display = '';
+  const msgsEl = document.getElementById('msgs');
+  if (msgsEl) msgsEl.innerHTML = '';
+  msgs = [];
+  // Set greeting + insight
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar';
+  const name = getDisplayName();
+  const greetEl = document.getElementById('hero-greeting');
+  if (greetEl) greetEl.textContent = greet + (name ? ', ' + name : '') + ' 👋';
+  if (isNew && user.profile?.date) {
+    const sign = SIGNS[getZodiacSign(user.profile.date)];
+    const insightEl = document.getElementById('hero-insight');
+    if (insightEl) insightEl.textContent = sign + ' burçlusun. Bugün sana özel astrolojik enerjini keşfedelim.';
+  }
+}
+
+function showErr(el, msg) {
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+// City autocomplete
+const CITIES=['İstanbul, Türkiye','Ankara, Türkiye','İzmir, Türkiye','Bursa, Türkiye','Antalya, Türkiye','Adana, Türkiye','Konya, Türkiye','Gaziantep, Türkiye','Mersin, Türkiye','Kayseri, Türkiye','Eskişehir, Türkiye','Trabzon, Türkiye','Samsun, Türkiye','Erzurum, Türkiye','Diyarbakır, Türkiye','New York, ABD','London, İngiltere','Berlin, Almanya','Paris, Fransa','Amsterdam, Hollanda','Münih, Almanya','Viyana, Avusturya','Zürih, İsviçre','Dubai, BAE','Tokyo, Japonya','Los Angeles, ABD','Toronto, Kanada'];
+function filterCities(q) {
+  const l=document.getElementById('city-list');
+  if(!q||q.length<2){l.classList.remove('show');return;}
+  const m=CITIES.filter(c=>c.toLowerCase().includes(q.toLowerCase())).slice(0,5);
+  if(!m.length){l.classList.remove('show');return;}
+  l.innerHTML=m.map(c=>`<div class="dk-sug" onclick="pickCity('${c}')">${c}</div>`).join('');
+  l.classList.add('show');
+}
+function pickCity(c) {
+  document.getElementById('ob-place').value=c;
+  document.getElementById('city-list').classList.remove('show');
+  enableBtn('b3');
+}
+
+// Chat input interactions
+function pillFocus(focused) {
+  const btn = document.getElementById('hist-btn');
+  if (btn) { btn.style.opacity = focused ? '0' : '1'; btn.style.pointerEvents = focused ? 'none' : 'all'; }
+}
+function pillInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  const hasText = el.value.trim().length > 0;
+  document.getElementById('pill-send')?.classList.toggle('dim', !hasText);
+}
+
+function openHistory() {
+  renderHistory();
+  document.getElementById('hist-panel').classList.add('open');
+  document.getElementById('hist-overlay').classList.add('show');
+}
+function closeHistory() {
+  document.getElementById('hist-panel').classList.remove('open');
+  document.getElementById('hist-overlay').classList.remove('show');
+}
+
+function onkey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send(e);}}
+function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+async function send(e) {
+  e.preventDefault();
+  const inp=document.getElementById('cinput');
+  const t=inp.value.trim();
+  if(!t||busy)return;
+  inp.value='';inp.style.height='auto';
+  document.getElementById('pill-send')?.classList.add('dim');
+  busy=true;
+  clearEmpty();
+  msgs.push({role:'user',content:t});
+  addBubble('user',t);
+  const tid='b'+Date.now();
+  addBubble('assistant',null,tid);
+  try{const r=await callAI(msgs);msgs.push({role:'assistant',content:r});setBubble(tid,r);}
+  catch(err){setBubble(tid,'Hata: '+err.message);}
+  busy=false;scrollBottom();
+}
+function clearEmpty(){
+  const e=document.getElementById('chat-empty');
+  if(e) e.style.display='none';
+}
+function getMsgsEl(){
+  return document.getElementById('msgs');
+}
+function addBubble(role,text,id){
+  const area=getMsgsEl();
+  if (!area) return;
+  const row=document.createElement('div');row.className='brow '+role;if(id)row.id=id;
+  const b=document.createElement('div');b.className='bub '+role;
+  if(text===null)b.innerHTML='<div class="tdots"><span></span><span></span><span></span></div>';
+  else b.textContent=text;
+  row.appendChild(b);area.appendChild(row);scrollBottom();
+}
+function setBubble(id,t){const el=document.getElementById(id);if(el)el.querySelector('.bub').textContent=t;}
+function scrollBottom(){const a=getMsgsEl();if(a)a.scrollTop=a.scrollHeight;}
+function emptyHtml(){return '';}
+async function callAI(m){
+  const p=user?.profile||{};
+  const uname=getDisplayName();
+  const sign=p.date?SIGNS[getZodiacSign(p.date)]:'';
+  const systemPrompt=`Sen Mest — kişiselleştirilmiş bir astroloji rehberisin. Samimi, sıcak, "sen" diliyle konuş.
+
+KULLANICI:
+- Ad: ${uname}
+- Doğum tarihi: ${p.date||'bilinmiyor'}
+- Doğum saati: ${p.time||'bilinmiyor'}
+- Doğum yeri: ${p.place||'bilinmiyor'}
+- Güneş burcu: ${sign||'bilinmiyor'}
+
+Bugünün tarihi: ${new Date().toLocaleDateString('tr-TR')}
+
+KURALLAR:
+- Kısa cevap ver (2-4 cümle), sorulursa detaylandır
+- Kehanet değil, "eğilim" ve "enerji" diliyle konuş
+- Türkçe yaz`;
+
+  const res=await fetch('/api/chat',{
+    method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({messages:m,systemPrompt})
+  });
+  if(!res.ok)throw new Error('API hatası: '+res.status);
+  const data=await res.json();
+  return data.reply;
+}
+
+// ═══════════════════════════════════════════════
+//  TAB NAVIGATION
+// ═══════════════════════════════════════════════
+let currentTab = 'senin';
+function switchTab(tab) {
+  document.querySelectorAll('.apage').forEach(p => p.classList.remove('active-page'));
+  document.querySelectorAll('.tnav').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active-page');
+  const activeBtn = document.getElementById('tnav-'+tab);
+  activeBtn.classList.add('active');
+  // Scroll active tab into view
+  activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  currentTab = tab;
+  if (tab === 'senin')   { updateHeroGreeting(); }
+  if (tab === 'harita')  renderNatalChart();
+  if (tab === 'takvim')  renderCalendar();
+  if (tab === 'profil')  renderProfile();
+}
+
+function getDisplayName() {
+  if (user?.profile?.name) return user.profile.name;
+  const e = user?.email?.split('@')[0] || '';
+  return e.charAt(0).toUpperCase() + e.slice(1);
+}
+
+function updateHeroGreeting() {
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar';
+  const name = getDisplayName();
+  const el = document.getElementById('hero-greeting');
+  if (el) el.textContent = greet + (name ? ', ' + name : '');
+}
+
+// ═══════════════════════════════════════════════
+//  NATAL CHART
+// ═══════════════════════════════════════════════
+const SIGNS = ['♈ Koç','♉ Boğa','♊ İkizler','♋ Yengeç','♌ Aslan','♍ Başak','♎ Terazi','♏ Akrep','♐ Yay','♑ Oğlak','♒ Kova','♓ Balık'];
+const SIGN_COLORS = ['#f43f5e','#f97316','#eab308','#22c55e','#f97316','#84cc16','#38bdf8','#a855f7','#6366f1','#64748b','#06b6d4','#8b5cf6'];
+
+function getZodiacSign(date) {
+  if (!date) return 0;
+  const d = new Date(date);
+  const m = d.getMonth()+1, day = d.getDate();
+  if((m==3&&day>=21)||(m==4&&day<=19))return 0;
+  if((m==4&&day>=20)||(m==5&&day<=20))return 1;
+  if((m==5&&day>=21)||(m==6&&day<=20))return 2;
+  if((m==6&&day>=21)||(m==7&&day<=22))return 3;
+  if((m==7&&day>=23)||(m==8&&day<=22))return 4;
+  if((m==8&&day>=23)||(m==9&&day<=22))return 5;
+  if((m==9&&day>=23)||(m==10&&day<=22))return 6;
+  if((m==10&&day>=23)||(m==11&&day<=21))return 7;
+  if((m==11&&day>=22)||(m==12&&day<=21))return 8;
+  if((m==12&&day>=22)||(m==1&&day<=19))return 9;
+  if((m==1&&day>=20)||(m==2&&day<=18))return 10;
+  return 11;
+}
+
+function renderNatalChart() {
+  const el = document.getElementById('planet-table');
+  if (!el) return;
+  const p = user?.profile || {};
+  const sunIdx = getZodiacSign(p.date);
+
+  document.getElementById('chart-sub').textContent = p.place || 'Natal Chart';
+
+  const PLANET_DATA = [
+    { name:'Güneş',    sym:'☀', desc:'Kimliğin, özgüvенin ve temel karakterin',  offset:0 },
+    { name:'Ay',       sym:'☽', desc:'Duygusal doğan, içgüdülerin ve alışkanlıkların', offset:2 },
+    { name:'Yükselen', sym:'↑', desc:'Dünyaya nasıl göründüğün, ilk izlenimin',   offset:5 },
+    { name:'Merkür',   sym:'☿', desc:'Düşünce biçimin, iletişim ve öğrenme tarzın', offset:1 },
+    { name:'Venüs',    sym:'♀', desc:'Sevgi anlayışın, estetik zevkin ve çekimin', offset:3 },
+    { name:'Mars',     sym:'♂', desc:'Enerji, tutku ve kararlılık biçimin',        offset:4 },
+    { name:'Jüpiter',  sym:'♃', desc:'Büyüme, şans ve genişleme alanın',          offset:6 },
+    { name:'Satürn',   sym:'♄', desc:'Disiplin, sorumluluk ve uzun vadeli hedeflerin', offset:7 },
+  ];
+
+  el.innerHTML = PLANET_DATA.map(planet => {
+    const signIdx = (sunIdx + planet.offset) % 12;
+    const sign = SIGNS[signIdx];
+    const color = SIGN_COLORS[signIdx];
+    return `
+    <div class="planet-row">
+      <div class="planet-symbol" style="color:${color}">${planet.sym}</div>
+      <div class="planet-info">
+        <div class="planet-name-row">
+          <span class="planet-name">${planet.name}</span>
+          <span class="planet-sign" style="color:${color}">${sign}</span>
+        </div>
+        <div class="planet-desc">${planet.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  CALENDAR
+// ═══════════════════════════════════════════════
+let calDate = new Date();
+const MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+const MOCK_EVENTS = [
+  {day:3,  title:'Yeni Ay — Yengeç', color:'#a855f7'},
+  {day:10, title:'Merkür retro bitiyor', color:'#f97316'},
+  {day:18, title:'Dolunay — Oğlak', color:'#f43f5e'},
+  {day:23, title:'Güneş Aslan\'a giriyor', color:'#eab308'},
+  {day:29, title:'Venüs-Mars kavuşumu', color:'#38aef5'},
+];
+
+const DAILY_INSIGHTS = {
+  3:  { title:'Yeni Ay — Yengeç', detail:'Duygusal yenilenme zamanı. Yeni Ay enerjisi içe dönmeyi, niyet belirlemeyi destekliyor. Bugün kendin için bir şeyler planla, ne istediğini netleştir. Zihinsel netlik için sabah sessizliği ideal.' },
+  10: { title:'Merkür Retrosu Bitiyor', detail:'Ertelenmiş kararlar ve tamamlanmamış projeler için beklenen an geldi. İletişim aksamaları azalıyor, imzalanan belgeler ve yeni başlangıçlar için elverişli bir dönem başlıyor.' },
+  18: { title:'Dolunay — Oğlak', detail:'Kariyer ve uzun vadeli hedeflerde bir dönem kapanıyor. Dolunay duygusal yoğunluğu artırır; sabırlı olmak önemli. Bugün başlattıklarını değerlendirmek, tamamlamak için güçlü bir gün.' },
+  23: { title:'Güneş Aslan\'a Giriyor', detail:'Bir aylık yaratıcılık, özgüven ve liderlik dönemi başlıyor. Kendin olmaktan çekinme, görünür ol. Sanatsal projeler, sosyal bağlantılar ve özgün ifade bu dönemde parlar.' },
+  29: { title:'Venüs-Mars Kavuşumu', detail:'İlişkilerde tutku ve sıcaklık zirveye ulaşıyor. Romantik girişimler için güçlü bir enerji var. Sevdiklerine zaman ayır; aynı zamanda kendi arzularını ve sınırlarını da keşfetmek için iyi bir gün.' },
+};
+
+function changeMonth(dir) { calDate.setMonth(calDate.getMonth()+dir); renderCalendar(); }
+
+function renderCalendar() {
+  const y=calDate.getFullYear(), m=calDate.getMonth();
+  document.getElementById('cal-month-lbl').textContent = MONTHS_TR[m]+' '+y;
+
+  const firstDay = new Date(y,m,1).getDay();
+  // Mon=0 offset
+  const offset = (firstDay===0?6:firstDay-1);
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = new Date();
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const eventDays = new Set(MOCK_EVENTS.map(e=>e.day));
+
+  for(let i=0;i<offset;i++){
+    const d=document.createElement('div');d.className='cal-day other-month';
+    const prev=new Date(y,m,0).getDate()-offset+i+1;
+    d.textContent=prev; grid.appendChild(d);
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const el=document.createElement('div');
+    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
+    el.className='cal-day'+(isToday?' today':'')+(eventDays.has(d)?' has-event':'');
+    el.textContent=d;
+    el.onclick=(()=>{const dd=d;return()=>showDayInsight(dd,m,y);})();
+    grid.appendChild(el);
+  }
+  const remaining=(7-(offset+daysInMonth)%7)%7;
+  for(let d=1;d<=remaining;d++){const el=document.createElement('div');el.className='cal-day other-month';el.textContent=d;grid.appendChild(el);}
+
+  // Events
+  const evList=document.getElementById('events-list');
+  evList.innerHTML=MOCK_EVENTS.map(e=>`
+    <div class="event-item">
+      <div class="event-dot" style="background:${e.color}"></div>
+      <div>
+        <div class="event-title">${e.title}</div>
+        <div class="event-date">${MONTHS_TR[m]} ${e.day}, ${y}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════
+const MOCK_HISTORY = [
+  {icon:'🌟',bg:'#fef3c7',title:'Doğum haritam ne söylüyor?',preview:'Koç burcusun, Yükselen işaretine göre...',time:'Bugün, 14:32'},
+  {icon:'🔮',bg:'#f3e8ff',title:'Bu hafta beklentilerim',preview:'Bu hafta Merkür retrosu etkisini...',time:'Dün, 09:15'},
+  {icon:'💫',bg:'#e0f2fe',title:'Venüs ve ilişkiler',preview:'Venüs\'ün konumu sana göre...',time:'3 gün önce'},
+  {icon:'🌙',bg:'#fce7f3',title:'Ay döngüsü ve enerji',preview:'Dolunay döneminde enerji nasıl...',time:'1 hafta önce'},
+  {icon:'⚡',bg:'#fff7ed',title:'Kariyer kararlarım',preview:'Mars\'ın konumu kariyer alanında...',time:'2 hafta önce'},
+];
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = MOCK_HISTORY.map(h=>`
+    <div class="hist-item" onclick="openHistoryChat()">
+      <div class="hist-icon" style="background:${h.bg}">${h.icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="hist-title">${h.title}</div>
+        <div class="hist-preview">${h.preview}</div>
+        <div class="hist-time">${h.time}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`).join('');
+}
+
+function openHistoryChat() { switchTab('senin'); document.getElementById('cinput')?.focus(); }
+
+function showDayInsight(day, month, year) {
+  const card = document.getElementById('day-insight');
+  if (!card) return;
+  const insight = DAILY_INSIGHTS[day];
+  const dateStr = MONTHS_TR[month] + ' ' + day + ', ' + year;
+  const title = insight ? insight.title : 'Sakin Bir Gün';
+  const detail = insight ? insight.detail : 'Bugün için özel bir gezegen etkisi bulunmuyor. Rutinlerin ve küçük adımların gücünü hissedeceğin, sakin ve dengeli bir gün.';
+  card.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#0284c7;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">${dateStr}</div>
+    <div style="font-size:16px;font-weight:700;color:#0c4a6e;margin-bottom:8px;">${title}</div>
+    <div style="font-size:13px;color:#0369a1;line-height:1.6;">${detail}</div>`;
+  card.style.display = 'block';
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ═══════════════════════════════════════════════
+//  PROFILE
+// ═══════════════════════════════════════════════
+function renderProfile() {
+  if (!user) return;
+  const p = user.profile||{};
+  const name = getDisplayName();
+  document.getElementById('prof-name').textContent = name;
+  document.getElementById('prof-email').textContent = user.email;
+  if (p.date) {
+    const d=new Date(p.date);
+    document.getElementById('p-date').textContent=d.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+  }
+  document.getElementById('p-time').textContent = p.time||'Belirtilmedi';
+  document.getElementById('p-place').textContent = p.place||'Belirtilmedi';
+}
+
+// Landing word anim
+let aw=1;
+setInterval(()=>{document.getElementById('w'+aw)?.classList.remove('aw');aw=(aw+1)%3;document.getElementById('w'+aw)?.classList.add('aw');},2200);
+
+// Wire up landing buttons
+document.querySelector('#screen-land .btn-white').onclick = () => goOb(1);
+document.querySelector('#screen-land .btn-outline').onclick = () => openLogin();
+
+// Init
+const s=localStorage.getItem('session');
+if(s){user=JSON.parse(s);enterChat(false);}
+</script>
+</body>
+</html>
