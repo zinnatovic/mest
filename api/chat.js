@@ -21,6 +21,10 @@ module.exports = async function handler(req, res) {
   );
 
   const data = await response.json();
-  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Bir hata oluştu.';
+  if (data.error) {
+    res.json({ reply: 'Gemini hata: ' + data.error.message });
+    return;
+  }
+  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Yanıt boş: ' + JSON.stringify(data).slice(0, 200);
   res.json({ reply });
 }
